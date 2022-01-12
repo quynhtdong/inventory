@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="../public/styles.css">
+	<title>Inventory</title>
+</head>
+
+<body>
+	<h1>Add new item to Inventory</h1>
+	<hr>
+	<div>
+		<form action="/add" method="POST" enctype="multipart/form-data">
+			<div>
+				<label for="name">Item Name</label>
+				<input type="text" id="name" placeholder="Name"
+					value="" name="name" required>
+			</div>
+			<div>
+				<label for="desc">Item Description</label>
+				<textarea id="desc" name="desc" value="" rows="2"
+						placeholder="Description" required>
+				</textarea>
+			</div>
+			<div>
+				<label for="amount">Amount</label>
+				<input type="text" id="amount" placeholder="Amount"
+					value="" name="amount" required>
+			</div>
+			<div>
+				<label for="image">Upload Image</label>
+				<input type="file" id="image"
+					name="image" value="" required>
+			</div>
+			<div>
+				<button type="submit">Submit</button>
+			</div>
+		</form>
+	</div>
+	<hr>
+	<div>
+	<form action="/update" method="POST" enctype="multipart/form-data" >
+		<div id="update" style="display: none;" >
+			<h1>Update Item Information</h1>
+			<hr>
+			<div>
+				<label for="name">Item Name</label>
+				<input type="text" id="name" placeholder="Name"
+					value="" name="name" required>
+			</div>
+			<div>
+				<label for="desc">Item Description</label>
+				<textarea id="desc" name="desc" value="" rows="2"
+						placeholder="Description" required>
+				</textarea>
+			</div>
+			<div>
+				<label for="amount">Amount</label>
+				<input type="text" id="amount" placeholder="Amount"
+					value="" name="amount" required>
+			</div>
+			<div>
+				<label for="image">Upload Image</label>
+				<input type="file" id="image"
+					name="image" value="" required>
+			</div>
+			
+				<input type="hidden" id="update_id" name="itemId" value="">
+				
+				<input type="submit" value="Update">
+			</form>
+		</div>
+	<hr>
+
+	<h1>Inventory</h1>
+	<div>
+		<% items.forEach(function(item) { %>
+			<hr>
+			
+		<div>
+			<div>
+				<img src="data:image/<%=item.img.contentType%>;base64,
+					<%=item.img.data.toString('base64')%>"
+					width="100" 
+     				height="100">
+				<div>
+				<h3 id="demo">Name: <%= item.name %></h3>
+				<h5>Description: <%= item.desc %></h5>
+				<h5>Amount: <%= item.amount %></h5>
+				
+
+				</div>
+
+	
+				</div>
+			</div>
+		<h5>MODIFICATION</h5>
+		<form action="/delete" method="POST">
+			<input type="hidden" name="itemId" value="<%=item._id%>">
+			<input class="btn" type="submit" value="Delete">
+		</form>
+		<button class="btn" onClick="handleUpdate('<%=item._id%>')">Update</button>
+		
+		<hr>
+		<% }) %>
+	</div>
+	<script>
+		function handleUpdate(id) {
+		  document.getElementById("update").style.display = "block";
+		  document.getElementById("update_id").value = id;
+		  document.getElementById("update").scrollIntoView();
+		  var x = document.querySelectorAll(".btn");
+		  for (i = 0; i < x.length; i++) {
+    		x[i].disabled = true;
+  			}
+		}
+		</script>
+</body>
+
+</html>

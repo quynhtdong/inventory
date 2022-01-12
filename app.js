@@ -1,125 +1,117 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const mongoose = require('mongoose');
-var _ = require('lodash');
+// set up express & mongoose
+var express = require('express')
+var app = express()
+var bodyParser = require('body-parser');
+var mongoose = require('mongoose')
 
-const app = express();
+var fs = require('fs');
+var path = require('path');
+require('dotenv/config');
 
+mongoose.connect(process.env.MONGO_URL,
+  { useNewUrlParser: true, useUnifiedTopology: true }, err => {
+      console.log('connected')
+  });
+
+  
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+  
+// Set EJS as templating engine 
 app.set("view engine", "ejs");
+// set up multer for storing uploaded files
 
-app.use(bodyParser.urlencoded({encoded: true}));
-app.use(express.static("public"));
+var multer = require('multer');
 
-
-mongoose.connect('mongodb+srv://admin-quynh:hwanbob14@cluster0.zkuuy.mongodb.net/todolistDB?retryWrites=true&w=majority', {useNewUrlParser: true});
-
-const taskSchema = {name: String};
-
-const Task = mongoose.model("Task", taskSchema);
-
-const task1 = new Task({
-  name: "Reading the book"
+var storage = multer.diskStorage({
+	destination: (req, file, cb) => {
+		cb(null, 'uploads')
+	},
+	filename: (req, file, cb) => {
+		cb(null, file.fieldname + '-' + Date.now())
+	}
 });
 
-const task2 = new Task({
-  name: "Eat the apples"
+var upload = multer({ storage: storage });
+
+//load the mongoose model for item
+
+var item = require('./models');
+
+// the GET request handler that provides the HTML UI
+
+app.get('/', (req, res) => {
+	item.find({}, (err, items) => {
+		if (err) {
+			console.log(err);
+			res.status(500).send('An error occurred', err);
+		}
+		else {
+			res.render('page', { items: items });
+		}
+	});
 });
 
-const task3 = new Task({
-  name: "Check the mails"
+// the POST handler for processing the uploaded item
+
+app.post('/add', upload.single('image'), (req, res, next) => {
+
+	var obj = {
+		name: req.body.name,
+		desc: req.body.desc,
+		amount: req.body.amount,
+		img: {
+			data: fs.readFileSync(path.join(__dirname + '/uploads/' + req.file.filename)),
+			contentType: 'image/png'
+		}
+	}
+	item.create(obj, (err, item) => {
+		if (err) {
+			console.log(err);
+		}
+		else {
+			res.redirect('/');
+		}
+	});
 });
 
-const defaultTasks = [task1, task2, task3];
+app.post("/delete", function (req, res) {
+    const itemId = req.body.itemId
+	console.log(itemId)
+    item.findByIdAndRemove(itemId, function(err){
+		if (!err) {
+		  console.log("Successfully deleted item.");
+		  res.redirect("/");
+		}
+	  });
+})
 
-const listSchema = {
-  name: String,
-  tasks: [taskSchema]
-};
+app.post("/update", upload.single('image'), (req, res, next) => {
+    const itemId = req.body.itemId
+	console.log(req.body)
+	var obj = {
+		name: req.body.name,
+		desc: req.body.desc,
+		amount: req.body.amount,
+		img: {
+			data: fs.readFileSync(path.join(__dirname + '/uploads/' + req.file.filename)),
+			contentType: 'image/png'
+		}
+	}
+    item.updateOne(
+        { _id: itemId },
+        { $set: obj },
+        function (err, result) {
+            if (!err) res.redirect("/");
+            else res.send(err)
+    })
+})
 
-const List = mongoose.model("List", listSchema);
+// configure the server's port
 
-app.get("/", function(req, res){
-Task.find({}, function(err, foundTasks){
-  if(foundTasks.length === 0) {
-    Task.insertMany(defaultTasks, function(err){
-      if(err) console.log(err);
-      else console.log("Successfully insert");
-      res.redirect("/");
-    });
-  } else {
-  res.render("list", {listTitle: "Today", newTasks: foundTasks});
-  console.log(foundTasks); }
-});
-
-});
-
-app.get("/:customListName", function(req, res){
-  const customListName = _.capitalize(req.params.customListName);
-  List.findOne({name: customListName}, function(err, foundList){
-    if(!err) {
-      if(!foundList) {
-      const list = new List ({
-        name: customListName,
-        task: defaultTasks
-      });
-      list.save();
-      res.redirect("/" + customListName);
-    }
-
-    else {
-    res.render("list", {listTitle: foundList.name, newTasks: foundList.tasks});
-  }
-}
-  });
-
-
-});
-
-app.post("/", function(req, res){
-  const item = req.body.newTask;
-  const list = req.body.list;
-  const newTask = new Task ({
-    name: item
-  });
-if(list === "Today") {
-  newTask.save();
-  res.redirect("/");
-} else {
-  List.findOne({name: list}, function(err, foundList){
-    foundList.tasks.push(newTask);
-    foundList.save();
-    res.redirect("/" + list);
-  });
-
-}
-});
-
-app.post("/delete", function(req, res){
-  const checkedTaskId = req.body.checkbox;
-  const list = req.body.list;
-
-  if(list === "Today"){
-    Task.findByIdAndRemove(checkedTaskId, function(err){
-      if(err) console.log(err);
-      else {
-        res.redirect("/");
-      }
-    });
-  } else {
-    List.findOneAndUpdate({name: list}, {$pull: {tasks: {_id: checkedTaskId}}}, function(err, foundList){
-      if(!err) {
-        res.redirect("/" + list);
-      }
-    });
-  }
-
-});
-
-
-let port = process.env.PORT;
-if (port == null || port == "") {
-  port = 3000;
-}
-app.listen(port, function(){
-  console.log("Server has started Successfully");
-});
+var port = process.env.PORT || '3000'
+app.listen(port, err => {
+	if (err)
+		throw err
+	console.log('Server listening on port', port)
+})
